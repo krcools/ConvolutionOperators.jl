@@ -67,7 +67,7 @@ function Base.eltype(x::AbstractConvOp_LC)
     return T
 end
 
-function convolve!(y, Z::AbstractConvOp_LC, x, X, j, k_start=1, k_stop=size(Z,3))
+function convolve!(y, Z::AbstractConvOp_LC, x, X, j, k_start=1, k_stop=size(Z,3), tail_truncate=false)
 
     
     for (a,cvo) in terms(Z)
@@ -75,7 +75,7 @@ function convolve!(y, Z::AbstractConvOp_LC, x, X, j, k_start=1, k_stop=size(Z,3)
         w = similar(y)
         fill!(w,0)
 
-        convolve!(w, cvo, x, X, j, k_start, k_stop)
+        convolve!(w, cvo, x, X, j, k_start, k_stop, tail_truncate)
         y .+= a*w
     end
 

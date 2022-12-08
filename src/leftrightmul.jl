@@ -29,7 +29,7 @@ function Base.:*(A::LinearMap, C::AbstractConvOp) LeftRightMulCVO(C,A,I) end
 function Base.:*(C::AbstractConvOp, B::AbstractArray) LeftRightMulCVO(C,I,B) end
 function Base.:*(A::AbstractArray, C::AbstractConvOp) LeftRightMulCVO(C,A,I) end
 
-function convolve!(y, Z::LeftRightMulCVO, x, X, j, k_start=1, k_stop=size(Z,3))
+function convolve!(y, Z::LeftRightMulCVO, x, X, j, k_start=1, k_stop=size(Z,3), tail_truncate=false)
 
     CVO = Z.convop
     A = Z.left_linear_map
@@ -43,7 +43,7 @@ function convolve!(y, Z::LeftRightMulCVO, x, X, j, k_start=1, k_stop=size(Z,3))
     w = similar(y, ax1)
 
     fill!(w,0)
-    convolve!(w, CVO, Bx, BX, j, k_start, k_stop)
+    convolve!(w, CVO, Bx, BX, j, k_start, k_stop, tail_truncate)
     y .+= A*w
 end
 
@@ -57,4 +57,12 @@ function timeslice!(Y, Z::LeftRightMulCVO, k)
     B = Z.right_linear_map
 
     Y .= Matrix(A*C*B)
+end
+
+function tailindex(Z::LeftRightMulCVO)
+    return tailindex(Z.convop)
+end
+
+function hastail(Z::LeftRightMulCVO)
+    return hastail(Z.convop)
 end

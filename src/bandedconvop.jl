@@ -23,7 +23,8 @@ function _getindex(obj::ConvOp, m::Int, n::Int, k::Int)
     return obj.data[k-obj.k0[m,n]+1,m,n]
 end
 
-function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3))
+function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3), tail_truncate=false)
+    kmax = tailindex(Z)
     for n in axes(x,1)
         for m in axes(y,1)
             k0 = Z.k0[m,n]
@@ -35,7 +36,11 @@ function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3))
             end
 
             j-k1 > 0 || continue
-            y[m] += Z.tail[m,n] * X[n,j-k1]
+            if j > kmax && tail_truncate
+                y[m] += Z.tail[m,n] * (X[n,j-k1] - X[n,j-kmax]) 
+            else
+                y[m] += Z.tail[m,n] * X[n,j-k1]
+            end
         end
     end
     return y
