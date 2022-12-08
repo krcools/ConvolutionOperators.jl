@@ -23,23 +23,26 @@ function _getindex(obj::ConvOp, m::Int, n::Int, k::Int)
     return obj.data[k-obj.k0[m,n]+1,m,n]
 end
 
-function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3), tail_truncate=false)
-    kmax = tailindex(Z)
+function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3))
+    @assert k_stop >= k_start
     for n in axes(x,1)
         for m in axes(y,1)
             k0 = Z.k0[m,n]
             k1 = Z.k1[m,n]
+            # @show (m,n,max(k0,k_start),min(k1,k_stop))
             for k in max(k0,k_start):min(k1,k_stop)
                 p = k - k0 + 1
                 j-k < 0 && continue
                 y[m] += Z.data[p,m,n] * x[n,j-k+1]
             end
 
-            j-k1 > 0 || continue
-            if j > kmax && tail_truncate
-                y[m] += Z.tail[m,n] * (X[n,j-k1] - X[n,j-kmax]) 
+            q0 = j - min(k_stop, j) + 1
+            q1 = j - max(k1, k_start-1)
+            q1 >= q0 || continue
+            if q0 > 1
+                y[m] += Z.tail[m,n] * (X[n,q1] - X[n,q0-1])
             else
-                y[m] += Z.tail[m,n] * X[n,j-k1]
+                y[m] += Z.tail[m,n] * X[n,q1]
             end
         end
     end
@@ -78,10 +81,17 @@ function convolve!(y, Z::ConvOpAsMatrix, x, X, j, k_start=1, k_stop=size(Z,3))
     convolve!(y, Z.convop, x, X, j, k_start, k_stop)
 end
 
-function tailindex(Z)
+function tailindex(Z::ConvOp)
     return maximum(Z.k1)
 end
 
-function hastail(Z)
+"""
+    hastail(x::AbstractConvop) -> Bool
+
+Returns yes if the timeslices for k larger then `tailindex(x)` take on
+    a constant value. This can be exploited to compute convolutions more
+    efficiency.
+"""
+function hastail(Z::ConvOp)
     return Z.length > tailindex(Z)
 end
