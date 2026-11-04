@@ -113,7 +113,7 @@ end
     @test size(cv) == (2,2,5)
     @test ConvolutionOperators.hastail(cv) == true
     tcv = ConvolutionOperators.truncate(cv,4)
-    @test size(tcv) == (2,2,5)
+    @test size(tcv) == (2,2,4)
     @test ConvolutionOperators.hastail(tcv) == false
 
     std = rand(2,12)
