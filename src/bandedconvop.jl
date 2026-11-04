@@ -23,27 +23,43 @@ function _getindex(obj::ConvOp, m::Int, n::Int, k::Int)
     return obj.data[k-obj.k0[m,n]+1,m,n]
 end
 
+
+
 function convolve!(y, Z::ConvOp, x, X, j, k_start=1, k_stop=size(Z,3))
     @assert k_stop >= k_start
-    for n in axes(x,1)
-        for m in axes(y,1)
+    # Each task owns a contiguous block of rows (no write races). Within a block
+    # we loop n outer / m inner so that data[:, mrange, n], k0/k1/tail[mrange, n]
+    # are traversed contiguously in memory and x[n, :] is reused across rows.
+    M = length(axes(y,1))
+    M == 0 && return y
+    nchunks = min(M, 4 * Threads.nthreads())
+    @sync for mrange in Iterators.partition(axes(y,1), cld(M, nchunks))
+        Threads.@spawn _convolve_rows!(y, Z, x, X, j, k_start, k_stop, mrange)
+    end
+    return y
+end
+
+function _convolve_rows!(y, Z::ConvOp, x, X, j, k_start, k_stop, mrange)
+    T = eltype(y)
+    @inbounds for n in axes(x,1)
+        for m in mrange
             k0 = Z.k0[m,n]
             k1 = Z.k1[m,n]
 
-            for k in max(k0,k_start):min(k1,k_stop)
-                p = k - k0 + 1
-                j-k < 0 && continue
-                y[m] += Z.data[p,m,n] * x[n,j-k+1]
+            # banded part; the bound k <= j replaces the `j-k < 0` test
+            s = zero(T)
+            @simd for k in max(k0,k_start):min(k1,k_stop,j)
+                s += Z.data[k-k0+1,m,n] * x[n,j-k+1]
             end
 
+            # constant tail part, evaluated via the cumulative sum X
             q0 = j - min(k_stop, j) + 1
             q1 = j - max(k1, k_start-1)
-            q1 >= q0 || continue
-            if q0 > 1
-                y[m] += Z.tail[m,n] * (X[n,q1] - X[n,q0-1])
-            else
-                y[m] += Z.tail[m,n] * X[n,q1]
+            if q1 >= q0
+                s += q0 > 1 ? Z.tail[m,n] * (X[n,q1] - X[n,q0-1]) :
+                              Z.tail[m,n] * X[n,q1]
             end
+            y[m] += s
         end
     end
     return y
