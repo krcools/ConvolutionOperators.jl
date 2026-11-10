@@ -23,17 +23,16 @@ end
 
 function convolve!(y, L::LiftedConvOp, x, X, j, k_start=1, k_stop=size(L,3))
 
-    y = view(y, axes(L,1))
-    x = view(x, axes(L,2), axes(x,2))
-    X = view(X, axes(L,2), axes(X,2))
-
     I = L.rowblock
     J = L.colblock
-
-    yI = view(y, I)
-    xJ = view(x, J, axes(x,2))
-    XJ = view(X, J, axes(x,2))
     LIJ = L.convop
+
+    y = view(y, axes(L,1))
+    yI = view(y, I)
+
+    P = getindex(axes(L,2), J)
+    xJ = view(x, P, axes(x,2))
+    XJ = view(X, P, axes(x,2))
 
     convolve!(yI, LIJ, xJ, XJ, j, k_start, k_stop)
 end
