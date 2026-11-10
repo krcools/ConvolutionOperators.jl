@@ -32,7 +32,7 @@ function Base.:*(A::LinearMap, C::AbstractConvOp) LeftRightMulCVO(C,A,I) end
 function Base.:*(C::AbstractConvOp, B::AbstractArray) LeftRightMulCVO(C,I,B) end
 function Base.:*(A::AbstractArray, C::AbstractConvOp) LeftRightMulCVO(C,A,I) end
 
-function Base.eltype(x::LeftRightMulCVO) eltype(x.convop) end
+#function Base.eltype(x::LeftRightMulCVO) eltype(x.convop) end
 
 function convolve!(y, Z::LeftRightMulCVO, x, X, j, k_start=1, k_stop=size(Z,3))
 
@@ -40,8 +40,8 @@ function convolve!(y, Z::LeftRightMulCVO, x, X, j, k_start=1, k_stop=size(Z,3))
     A = Z.left_linear_map
     B = Z.right_linear_map
 
-    Bx = B * x
-    BX = B * X
+    Bx = Matrix(B * x) # SpaceTime data should remain a matrix
+    BX = Matrix(B * X)
 
     T = promote_type(eltype(Z), eltype(Bx))
     ax1 = (Z.left_linear_map isa UniformScaling) ? axes(Z.convop,1) : axes(Z.left_linear_map,1)
